@@ -1,0 +1,56 @@
+# Gas City prototype — city configuration template.
+#
+# This file is rendered by entrypoint.sh via envsubst into /workspace/city/city.toml
+# on every container start. Variables (RIG1_URL, RIG2_URL, etc.) come from .env.
+# The pack.toml that sits next to this file declares the bundled gastown import;
+# the two demo rigs are registered below.
+
+[workspace]
+name = "gascity-prototype"
+provider = "claude"
+global_fragments = ["command-glossary", "operational-awareness"]
+
+# Per-rig pack imports — every registered rig auto-imports gastown's rig-scoped
+# agents (witness, refinery, polecat) without per-rig editing.
+[defaults.rig.imports.gastown]
+source = "github.com/gastownhall/gascity.git//examples/gastown/packs/gastown"
+
+[daemon]
+# Health-patrol cadence. Lower = more responsive reconciliation, higher CPU.
+patrol_interval = "30s"
+# Crash-loop quarantine — agent restarts allowed inside restart_window before quarantine.
+max_restarts = 5
+restart_window = "1h"
+# Graceful-shutdown grace period before SIGKILL.
+shutdown_timeout = "10s"
+# Closed-wisp reaper cadence and minimum age before reaping.
+wisp_gc_interval = "5m"
+wisp_ttl = "30m"
+# Enable graph.v2 formula execution from imported packs.
+formula_v2 = true
+
+[beads]
+# Dolt-backed bead store via the `bd` binary. The dolt SQL server runs locally
+# in the container; periodic `dolt push --ref refs/heads/dolt-data origin main`
+# from /workspace/beadstore backs the data to the GitHub repo at $BEADSTORE_URL.
+provider = "bd"
+
+[orders]
+# Don't impose a global skip-list day-one; let the gastown maintenance orders run.
+max_timeout = "10m"
+
+# Rigs — each one's source URL is in .env ($RIG1_URL / $RIG2_URL); the entrypoint
+# clones them into /workspace/rigs/<name>/. Filesystem path bindings live in
+# .gc/site.toml (machine-local), not here — see the entrypoint for that.
+#
+# `prefix` is the bead-ID prefix this rig's beads will use ("r1-abc", "r2-xyz").
+# Required here because gc auto-derives "ri" from both rig1 and rig2 otherwise,
+# which collides.
+[[rigs]]
+name = "rig1"
+prefix = "r1"
+
+# Each rig builds something different; the two run concurrently under one mayor.
+[[rigs]]
+name = "rig2"
+prefix = "r2"

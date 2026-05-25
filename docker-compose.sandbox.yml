@@ -1,0 +1,22 @@
+# Sandbox-only overlay. Adds the things the laptop doesn't need:
+#  - host networking, so the container can reach the git proxy at 127.0.0.1:38985
+#  - the sandbox CA bundle, so claude-code's node binary trusts the TLS-
+#    inspection cert when talking to api.anthropic.com
+#  - the OAuth token loaded from /home/claude/.claude/remote/.oauth_token
+#
+# Bring up with:
+#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up
+
+services:
+  city:
+    network_mode: host
+    environment:
+      # Replace the laptop's ANTHROPIC_API_KEY path with the sandbox's OAuth flow.
+      - ANTHROPIC_API_KEY=
+      - ANTHROPIC_BASE_URL=${ANTHROPIC_BASE_URL}
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN}
+      - NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt
+      - SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
+      - REQUESTS_CA_BUNDLE=/etc/ssl/certs/ca-certificates.crt
+    volumes:
+      - /etc/ssl/certs/ca-certificates.crt:/etc/ssl/certs/ca-certificates.crt:ro
