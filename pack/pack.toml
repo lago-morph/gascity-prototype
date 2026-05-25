@@ -1,0 +1,25 @@
+# Gas City prototype — root pack.
+#
+# We import the bundled gastown role taxonomy (mayor, deacon, boot,
+# witness, refinery, polecat, crew, dog) plus the maintenance pack it
+# depends on. Both packs live inside the gc binary; gc resolves these
+# `github.com/gastownhall/gascity.git//...` sources from embedded FS at
+# load time, no network round-trip.
+#
+# City-level [imports.gastown] expands city-scoped agents (mayor, deacon,
+# boot) on city startup. Rig-level [defaults.rig.imports.gastown] ensures
+# every rig automatically imports rig-scoped agents (witness, refinery,
+# polecat) without per-rig editing.
+
+[pack]
+name = "gascity-prototype"
+schema = 2
+
+[imports.gastown]
+source = "github.com/gastownhall/gascity.git//examples/gastown/packs/gastown"
+# The gastown pack itself imports maintenance transitively (`../maintenance`
+# inside the bundled gastown pack.toml), so we don't list maintenance here.
+# Adding it would duplicate the `dog` agent and refuse startup.
+#
+# Per-rig imports (witness, refinery, polecat) are declared in city.toml under
+# [defaults.rig.imports.gastown]; gc requires that placement, not pack.toml.

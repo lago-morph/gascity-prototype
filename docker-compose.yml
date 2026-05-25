@@ -1,0 +1,50 @@
+# Laptop-shaped compose file. On the sandbox, overlay docker-compose.sandbox.yml
+# on top (see README).
+#
+#   docker compose up                                              # laptop
+#   docker compose -f docker-compose.yml -f docker-compose.sandbox.yml up   # sandbox
+
+services:
+  city:
+    build: .
+    image: gascity-prototype:latest
+    container_name: gascity-prototype
+    env_file: .env
+    environment:
+      # Laptop auth path. On the sandbox the override file replaces this with
+      # CLAUDE_CODE_OAUTH_TOKEN + ANTHROPIC_BASE_URL.
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Rig + beadstore URLs and branches — same on both environments because
+      # .env (sandbox) and .env (laptop) point at the same variable names.
+      - RIG1_URL=${RIG1_URL}
+      - RIG2_URL=${RIG2_URL}
+      - BEADSTORE_URL=${BEADSTORE_URL}
+      - RIG1_BRANCH=${RIG1_BRANCH:-main}
+      - RIG2_BRANCH=${RIG2_BRANCH:-main}
+      - BEADSTORE_BRANCH=${BEADSTORE_BRANCH:-main}
+      - DOLT_REF=${DOLT_REF:-refs/heads/dolt-data}
+      # Tell claude it's safe to honor --dangerously-skip-permissions while
+      # running as root. Gascity's tmux agent invocation hardcodes that flag.
+      # Acceptable because the container is itself a sandboxed environment;
+      # if you run on a host where root claude is unsafe, run the container
+      # as a non-root user instead and remove this.
+      - IS_SANDBOX=1
+    volumes:
+      # All mutable state lives here. Persists across `docker compose restart`
+      # but not `docker rm` — the entrypoint re-clones on cold start.
+      - ./workspace:/workspace
+      # Optional: mount the pack directory for live-edit development.
+      # Note: if uncommented, your local ./pack/ must contain city.toml.example
+      # (the Dockerfile copies it into /pack at build time, but the bind mount
+      # shadows the baked-in copy). Easiest is to keep this commented unless
+      # actively iterating on pack content, and `docker compose build` between
+      # pack edits.
+      # - ./pack:/pack
+    # init: true gives us a proper tini PID 1 to reap the many short-lived dolt
+    # children that bd shells out per beads operation. Without it, the entrypoint
+    # gc start (which becomes PID 1) does not reap zombies and the process
+    # table fills with defunct dolt processes within seconds of activity.
+    init: true
+    stdin_open: true
+    tty: true
+    restart: unless-stopped
